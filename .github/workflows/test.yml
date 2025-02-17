@@ -14,7 +14,8 @@ jobs:
         run: |
           domains=$(jq -c '.tests = [
             { "name": "test1", "url": "1" },
-            { "name": "test2", "url": "2" }
+            { "name": "test2", "url": "2" },
+            { "name": "test3", "url": "3" }
           ]' <<< '{}')
           echo "domains=$domains" >> "$GITHUB_OUTPUT"
 
@@ -24,13 +25,20 @@ jobs:
     outputs:
       updated_domains: ${{ steps.modify.outputs.updated_domains }}
     steps:
-      - name: Modify JSON - Add ready_to_build
+      - name: Modify JSON - Add ready_to_build selectively
         id: modify
         run: |
           domains='${{ needs.build.outputs.domains }}'
-          
-          # Přidání ready_to_build: true ke všem testům
-          updated_domains=$(echo "$domains" | jq -c '.tests |= map(. + { "ready_to_build": true })')
+
+          # Přidáme ready_to_build: true POUZE pro "test1" a "test3"
+          updated_domains=$(echo "$domains" | jq -c '
+            .tests |= map(
+              if .name == "test1" or .name == "test3" then 
+                . + { "ready_to_build": true } 
+              else 
+                . 
+              end
+            )')
 
           echo "updated_domains=$updated_domains" >> "$GITHUB_OUTPUT"
 
@@ -55,5 +63,5 @@ jobs:
           echo "Running tests for:"
           echo "Name: ${{ matrix.test.name }}"
           echo "URL: ${{ matrix.test.url }}"
-          echo "Ready to build: ${{ matrix.test.ready_to_build }}"
+          echo "Ready to build: ${{ matrix.test.ready_to_build || 'false' }}"
           echo "----------------------------------------"

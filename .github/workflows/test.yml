@@ -12,12 +12,10 @@ jobs:
       - name: Set up domains
         id: tests
         run: |
-          domains=$(jq -n '{
-            tests: [
-              { name: "test1", url: "1" },
-              { name: "test2", url: "2" }
-            ]
-          }')
+          domains=$(jq -c '.tests = [
+            { "name": "test1", "url": "1" },
+            { "name": "test2", "url": "2" }
+          ]' <<< '{}')
           echo "domains=$domains" >> "$GITHUB_OUTPUT"
 
   deploy:

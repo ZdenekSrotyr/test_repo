@@ -1,0 +1,31 @@
+name: test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      domains: ${{ steps.tests.outputs.domains }}
+    steps:
+      - name: Set up domains
+        id: tests
+        run: |
+          domains=$(jq -n '{
+            tests: [
+              { name: "test1", url: "1" },
+              { name: "test2", url: "2" }
+            ]
+          }')
+          echo "domains=$domains" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test: ${{ fromJson(needs.build.outputs.domains).tests }}
+    steps:
+      - name: Print test name and URL
+        run: echo "Running tests for name=${{ matrix.test.name }}, url=${{ matrix.test.url }}"

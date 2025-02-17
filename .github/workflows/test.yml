@@ -9,7 +9,7 @@ jobs:
     outputs:
       domains: ${{ steps.tests.outputs.domains }}
     steps:
-      - name: Set up domains
+      - name: Set up initial domains
         id: tests
         run: |
           domains=$(jq -c '.tests = [
@@ -18,12 +18,42 @@ jobs:
           ]' <<< '{}')
           echo "domains=$domains" >> "$GITHUB_OUTPUT"
 
-  deploy:
+  modify_json:
     needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      updated_domains: ${{ steps.modify.outputs.updated_domains }}
+    steps:
+      - name: Modify JSON - Add ready_to_build
+        id: modify
+        run: |
+          domains='${{ needs.build.outputs.domains }}'
+          
+          # Přidání ready_to_build: true ke všem testům
+          updated_domains=$(echo "$domains" | jq -c '.tests |= map(. + { "ready_to_build": true })')
+
+          echo "updated_domains=$updated_domains" >> "$GITHUB_OUTPUT"
+
+  log_json:
+    needs: modify_json
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print formatted JSON to log
+        run: |
+          echo '${{ needs.modify_json.outputs.updated_domains }}' | jq '.'
+
+  deploy:
+    needs: modify_json
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test: ${{ fromJson(needs.build.outputs.domains).tests }}
+        test: ${{ fromJson(needs.modify_json.outputs.updated_domains).tests }}
     steps:
-      - name: Print test name and URL
-        run: echo "Running tests for name=${{ matrix.test.name }}, url=${{ matrix.test.url }}"
+      - name: Print test details
+        run: |
+          echo "----------------------------------------"
+          echo "Running tests for:"
+          echo "Name: ${{ matrix.test.name }}"
+          echo "URL: ${{ matrix.test.url }}"
+          echo "Ready to build: ${{ matrix.test.ready_to_build }}"
+          echo "----------------------------------------"

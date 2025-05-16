@@ -17,7 +17,7 @@ jobs:
             { "name": "test2", "url": "2" },
             { "name": "test3", "url": "3" }
           ]' <<< '{}')
-          echo "domains=$domains" >> "$GITHUB_OUTPUT"
+          echo "domains2=$domains" >> "$GITHUB_OUTPUT"
 
   modify_json:
     needs: build

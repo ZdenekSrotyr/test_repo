@@ -1,1 +1,1 @@
-test={{component}}
+test=ubuntu-latest={{component}}

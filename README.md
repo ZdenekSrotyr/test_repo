@@ -1,1 +1,1 @@
-test
+test=ubuntu-latest

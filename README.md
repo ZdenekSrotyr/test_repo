@@ -1,1 +1,67 @@
-test=test=test=$test=test=test=ubuntu-latest=${{component_id}}=${{component_id}} = ${{component_id}}={{component}}
+name: test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      domains: ${{ steps.tests.outputs.domains }}
+    steps:
+      - name: Set up initial domains
+        id: tests
+        run: |
+          domains=$(jq -c '.tests = [
+            { "name": "test1", "url": "1" },
+            { "name": "test2", "url": "2" },
+            { "name": "test3", "url": "3" }
+          ]' <<< '{}')
+          echo "domains=$domains" >> "$GITHUB_OUTPUT"
+
+  modify_json:
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      updated_domains: ${{ steps.modify.outputs.updated_domains }}
+    steps:
+      - name: Modify JSON - Add ready_to_build selectively
+        id: modify
+        run: |
+          domains='${{ needs.build.outputs.domains }}'
+
+          # Přidáme ready_to_build: true POUZE pro "test1" a "test3"
+          updated_domains=$(echo "$domains" | jq -c '
+            .tests |= map(
+              if .name == "test1" or .name == "test3" then 
+                . + { "ready_to_build": true } 
+              else 
+                . 
+              end
+            )')
+
+          echo "updated_domains=$updated_domains" >> "$GITHUB_OUTPUT"
+
+  log_json:
+    needs: modify_json
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print formatted JSON to log
+        run: |
+          echo '${{ needs.modify_json.outputs.updated_domains }}' | jq '.'
+
+  deploy:
+    needs: modify_json
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test: ${{ fromJson(needs.modify_json.outputs.updated_domains).tests }}
+    steps:
+      - name: Print test details
+        run: |
+          echo "----------------------------------------"
+          echo "Running tests for:"
+          echo "Name: ${{ matrix.test.name }}"
+          echo "URL: ${{ matrix.test.url }}"
+          echo "Ready to build: ${{ matrix.test.ready_to_build || 'false' }}"
+          echo "----------------------------------------"
